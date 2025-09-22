@@ -1,7 +1,6 @@
 import re
+import serial
 import time
-from idlelib.textview import ViewFrame
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
@@ -9,14 +8,15 @@ from selenium.webdriver.common.by import By
 
 
 print("Starting Scrap...")
-
+#Scrapper
 URL = "https://aviationweather.gov/api/data/metar?ids=KFDK%2CKIAD%2CKBFR&hours=0&order=id%2C-obs&sep=true"
+
 driver = webdriver.Chrome()
 driver.get(URL)
 
 vis_pattern = re.compile(r'\b(M?\d{1,2}(?:/\d+)?SM)\b')
 sky_pattern = re.compile(r'\b(?:FEW|SCT|BKN|OVC|VV)\d{3}\b')
-
+#Data Filter
 def vis_sky(metar_text):
     txt = " ".join(metar_text.split())
 
@@ -45,6 +45,7 @@ for line in row_data.splitlines():
 
     vis, sky = vis_sky(line)
 
+    category = "NA"
 
     if vis:
         if vis.startswith("10SM"):
@@ -55,10 +56,7 @@ for line in row_data.splitlines():
         category = "IFR"
     elif vis.startswith("0SM"):
         category = "LIFR"
-    else:
-        category = "NA"
-else:
-    category = "NA"
+
 
     category_label = CATEGORIES[category]
 
@@ -74,6 +72,19 @@ else:
     print (f"{station_id}: {vis or 'No Vis'} | Sky: {' '.join(sky) if sky else 'None'} | Category: {category} ({category_label})")
 
 driver.quit()
+
+ser = serial.Serial('COM1', 9600, timeout=1)
+time.sleep(2)
+
+for station_id, data in results.items():
+    category_val = data["category_value"]
+    message = f"{station_id}:{category_val}\n"
+    ser.write(message.encode('utf-8'))
+    print(f"Sent to Arduino -> {message.strip()}")
+
+    ser.close()
+
+
 
 
     
